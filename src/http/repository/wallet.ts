@@ -10,28 +10,26 @@ interface NetworkConfig {
 const NETWORK_CONFIGS: Record<Environment, NetworkConfig> = {
   production: {
     rpcUrl: 'https://api.provable.com/v2/mainnet',
-    contractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // USDC on Aleo Mainnet
+    contractAddress:
+      '6088188135219746443092391282916151282477828391085949070550825603498725268775field' // USDC on Aleo Mainnet
   },
   sandbox: {
     rpcUrl: 'https://api.provable.com/v2/testnet',
-    contractAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' // USDC on Aleo Testnet
+    contractAddress:
+      '6088188135219746443092391282916151282477828391085949070550825603498725268775field' // USDC on Aleo Testnet
   }
 };
 
 export interface WalletRepositoryInterface {
-  createWallet(environment: Environment): Promise<{
-    address: string;
-    paraphrase: string;
-    blockchain: string;
-  }>;
+  createWallet(environment: Environment): Promise<any>;
   getBalance(
     address: string,
     environment: Environment
   ): Promise<{ name: string; balance: string; chainBalance: string }>;
   sendToken(
-    paraphrase: string,
+    privateKey: string,
     recipientAddress: string,
-    amount: string,
+    amount: number,
     environment: Environment
   ): Promise<any>;
 }
@@ -56,17 +54,15 @@ class WalletRepository implements WalletRepositoryInterface {
     }
     return service;
   }
-  async createWallet(environment: Environment): Promise<{
-    address: string;
-    paraphrase: string;
-    blockchain: string;
-  }> {
+  async createWallet(environment: Environment){
     const AleoService = this.getAleoService(environment);
     const wallet = await AleoService.createWallet();
     return {
       address: wallet.address,
-      paraphrase: wallet.paraphrase,
-      blockchain: wallet.blockchain
+      privateKey: wallet.privateKey,
+      blockchain: wallet.blockchain,
+      computeKey: wallet.computeKey,
+      viewKey: wallet.viewKey
     };
   }
 
@@ -84,15 +80,15 @@ class WalletRepository implements WalletRepositoryInterface {
   }
 
   async sendToken(
-    paraphrase: string,
+    privateKey: string,
     recipientAddress: string,
-    amount: string,
+    amount: number,
     environment: Environment
   ): Promise<void> {
     try {
       const AleoService = this.getAleoService(environment);
       const transaction = await AleoService.sendToken(
-        paraphrase,
+        privateKey,
         recipientAddress,
         amount
       );
