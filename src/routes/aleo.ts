@@ -12,8 +12,9 @@ const CreateWalletSchema = z.object({
 const TransferSchema = z.object({
   fromUserId: z.string(),
   toAddress: z.string(),
-  amount: z.string(),
+  amount: z.number(),
   network: z.enum(['testnet', 'mainnet']),
+  fee: z.number().optional(),
 });
 
 const WebhookRegisterSchema = z.object({
@@ -84,7 +85,12 @@ router.post('/transfer', async (req: Request, res: Response) => {
   const paraphrase = "placeholder_paraphrase";
 
   const aleoService = getAleoService(network);
-  const transaction = await aleoService.sendToken(paraphrase, toAddress, amount);
+  const transaction = await aleoService.sendToken(
+    paraphrase,
+    toAddress,
+    amount,
+    fee
+  );
 
 
   return res.json({ message: 'Transfer successful', transaction });

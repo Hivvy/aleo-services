@@ -1,15 +1,14 @@
 
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid';
 import { AES, enc } from 'crypto-js';
  import {
   Account,
-  PrivateKey,
   AleoNetworkClient,
   initThreadPool,
   NetworkRecordProvider,
   ProgramManager,
-  AleoKeyProvider
-} from '@provablehq/sdk';
+  AleoKeyProvider,
+ } from '@provablehq/sdk';
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-encryption-key-32-bytes-long';
 
@@ -32,65 +31,103 @@ class AleoService {
   }
 
   async createWallet() {
-   const password = 'password';
-   const ciphertext = PrivateKey.newEncrypted(password);
-   const account = Account.fromCiphertext(ciphertext, password);
+    await initThreadPool();
+    const account = new Account();
     return {
-      address: account.address(),
-      privateKey: ciphertext,
-      viewKey: account.viewKey(),
-      computeKey: account.computeKey(),
+      address: account.address().to_string(),
+      privateKey: account.privateKey().to_string(),
+      viewKey: account.viewKey().to_string(),
       blockchain: 'Aleo'
     };
   }
 
   async getBalance(
     address: string
-  ): Promise<{ name: string; balance: string; chainBalance: string }> {
+   ): Promise<{ name: string; balance: string; chainBalance: string }> {
     const networkClient = new AleoNetworkClient(this.rpcUrl);
-     const public_balance = await networkClient.getProgramMappingValue(
-      'credits.aleo',
-      'account',
-      address
+
+    // Get public balance
+    const publicBalance = BigInt(
+      (
+        await networkClient.getProgramMappingValue(
+          'credits.aleo',
+          'account',
+          address
+        )
+      )?.replace('u64.public', '') ?? '0'
     );
+
+    // Get private balance from records
+    // const keyProvider = new AleoKeyProvider();
+    // keyProvider.useCache(true);
+    // const account = new Account({
+    //   privateKey: new PrivateKey().to_string(), // Temporary private key, not used for record fetching with view key
+    //   viewKey,
+    //   address,
+    // });
+    // const recordProvider = new NetworkRecordProvider(account, networkClient);
+    // await recordProvider.findRecords();
+    // const records = recordProvider.getRecords();
+    // let privateBalance = 0n;
+    // for (const record of records) {
+    //     const recordPlaintext = RecordPlaintext.from_ciphertext(record);
+    //     if (recordPlaintext.program_id() === 'credits.aleo' && !recordPlaintext.is_spent()) {
+    //         const microcredits = recordPlaintext.microcredits();
+    //         if (microcredits) {
+    //             privateBalance += microcredits;
+    //         }
+    //     }
+    // }
+
+
+    const totalBalance = publicBalance;
+
     return {
       name: 'Aleo',
-      balance: public_balance, // Placeholder
-      chainBalance: public_balance // Placeholder
+      balance: totalBalance.toString(),
+      chainBalance: totalBalance.toString()
     };
   }
 
   async sendToken(
     privateKey: string,
     recipientAddress: string,
-    amount: number
+    amount: number,
+    fee: number,
   ): Promise<any> {
-             // If the threadpool has not been initialized, do so (this step can be skipped if it's been initialized elsewhere). 
-        await initThreadPool();
+    // If the threadpool has not been initialized, do so (this step can be skipped if it's been initialized elsewhere).
+    await initThreadPool();
 
-        const account = new Account({ privateKey});
-        const networkClient = new AleoNetworkClient(this.rpcUrl);
+    const account = new Account({ privateKey });
+    const networkClient = new AleoNetworkClient(this.rpcUrl);
 
-        const keyProvider = new AleoKeyProvider();
-        keyProvider.useCache(true);
+    const keyProvider = new AleoKeyProvider();
+    keyProvider.useCache(true);
 
-        const recordProvider = new NetworkRecordProvider(account, networkClient);
+    const recordProvider = new NetworkRecordProvider(account, networkClient);
 
-        const programManager = new ProgramManager(this.rpcUrl, keyProvider, recordProvider);
-        programManager.setAccount(account);
+    const programManager = new ProgramManager(
+      this.rpcUrl,
+      keyProvider,
+      recordProvider
+    );
+    programManager.setAccount(account);
 
-        const tx_id = await programManager.transfer(
-          1,
-          recipientAddress,
-          'transfer_public',
-          amount,
-          false
-        );
+    const tx_id = await programManager.transfer(
+      amount,
+      recipientAddress,
+      'public',
+      fee, // Fee is optional, SDK will estimate if not provided
+      false
+    );
 
-        const transactionId = await programManager.networkClient.getTransaction(tx_id);
+    const transaction = await programManager.networkClient.getTransaction(
+      tx_id
+    );
 
     return {
-      transactionId
+      transactionId: tx_id,
+      transaction,
     };
   }
 }
