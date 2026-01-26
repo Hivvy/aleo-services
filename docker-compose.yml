@@ -1,0 +1,23 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        ports:
+            - "8500:8000"
+            - "8501:8001"
+        environment:
+            DB_CONNECTION: ${DB_CONNECTION}
+            PORT: ${PORT}
+            TOKEN_DURATION: ${TOKEN_DURATION}
+            TOKEN_SECRET: ${TOKEN_SECRET}
+            MAIL_HOST: ${MAIL_HOST}
+            MAIL_PORT: ${MAIL_PORT}
+            MAIL_USERNAME: ${MAIL_USERNAME}
+            MAIL_PASSWORD: ${MAIL_PASSWORD}
+            SECRET_KEY: ${SECRET_KEY}
+            CENTERAL_PARAPHRASE: ${CENTERAL_PARAPHRASE}
+            CENTERAL_ADDRESS: ${CENTERAL_ADDRESS}
+            WEBHOOK_URL: ${WEBHOOK_URL}
+            WS_BASE_BASEURL: ${WS_BASE_BASEURL}
+            ENCRYPTION_KEY: ${ENCRYPTION_KEY}
