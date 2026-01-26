@@ -16,8 +16,7 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-encryption-key-32-
 class AleoService {
   private rpcUrl: string;
   private contractAddress: string;
-//   account = new Account();
-
+ 
   constructor(rpcUrl: string, contractAddress: string) {
     this.rpcUrl = rpcUrl;
     this.contractAddress = contractAddress;
@@ -32,13 +31,7 @@ class AleoService {
     return bytes.toString(enc.Utf8);
   }
 
-  async createWallet(): Promise<{
-    address: string;
-    privateKey: string;
-    blockchain: string;
-    viewKey: string;
-    computeKey: string;
-  }> {
+  async createWallet() {
    const password = 'password';
    const ciphertext = PrivateKey.newEncrypted(password);
    const account = Account.fromCiphertext(ciphertext, password);
@@ -70,13 +63,32 @@ class AleoService {
   async sendToken(
     privateKey: string,
     recipientAddress: string,
-    amount: string
+    amount: number
   ): Promise<any> {
-    // In a real implementation, you'd use the Aleo SDK to create and broadcast a transaction
-    console.log(
-      `Sending ${amount} to ${recipientAddress} from wallet with privateKey ${privateKey}`
-    );
-    const transactionId = `txn_${uuidv4()}`;
+             // If the threadpool has not been initialized, do so (this step can be skipped if it's been initialized elsewhere). 
+        await initThreadPool();
+
+        const account = new Account({ privateKey});
+        const networkClient = new AleoNetworkClient(this.rpcUrl);
+
+        const keyProvider = new AleoKeyProvider();
+        keyProvider.useCache(true);
+
+        const recordProvider = new NetworkRecordProvider(account, networkClient);
+
+        const programManager = new ProgramManager(this.rpcUrl, keyProvider, recordProvider);
+        programManager.setAccount(account);
+
+        const tx_id = await programManager.transfer(
+          1,
+          recipientAddress,
+          'transfer_public',
+          amount,
+          false
+        );
+
+        const transactionId = await programManager.networkClient.getTransaction(tx_id);
+
     return {
       transactionId
     };
